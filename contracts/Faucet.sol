@@ -3,7 +3,7 @@ pragma solidity ^0.6.12;
 
 import "hardhat/console.sol";
 
-// TEMP SOLUTION UNTIL following file gets integrated into npm package @aave/protocol-v2
+// TEMP SOLUTION UNTIL following file gets integrated into npm package @aave/protocol-v2 , Hardhat doesn't support imports via https.
 // https://github.com/aave/protocol-v2/blob/master/contracts/interfaces/IAaveIncentivesController.sol 
 import "./IAaveIncentivesController.sol"; 
 
