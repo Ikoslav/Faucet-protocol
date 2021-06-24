@@ -18,22 +18,21 @@ task("accounts", "Prints the list of accounts", async () => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: {
+    compilers: [
+      {
+        version: "0.6.12",
+      }
+    ]
+  },
   defaultNetwork: "mumbai",
   networks:
   {
     hardhat: {},
     mumbai:
     {
-      url: process.env.PROVIDER_MUMBAI_TESTNET,
-      accounts: [process.env.MUMBAI_TESTNET_ACCOUNT],
-    },
-
-    matic:
-    {
-      url: process.env.PROVIDER_MATIC_MAINNET,
-      accounts: [process.env.MATIC_MAINNET_ACCOUNT],
-      gasPrice: 2000000000,
+      url: process.env.MUMBAI_PROVIDER,
+      accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_HOTWALLET],
     }
   }
 };

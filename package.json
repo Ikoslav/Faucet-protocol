@@ -25,6 +25,7 @@
     "hardhat": "^2.4.1"
   },
   "dependencies": {
+    "@aave/protocol-v2": "^1.0.1",
     "dotenv": "^10.0.0"
   }
 }

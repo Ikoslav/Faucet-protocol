@@ -1,25 +1,34 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional 
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
 
+
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile 
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
 
-  // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
 
-  await greeter.deployed();
+  // const signers = await ethers.getSigners();
+  // const ownerSigner = signers[0];
+  // const hotWalletSigner = signers[1];
 
-  console.log("Greeter deployed to:", greeter.address);
+  // console.log("ownerSigner:", ownerSigner.address);
+  // console.log("hotWalletSigner:", hotWalletSigner.address);
+
+  // // We get the contract to deploy
+  // const Faucet = await hre.ethers.getContractFactory("Faucet");
+  // const faucet = await Faucet.deploy(hotWalletSigner.address);
+
+  // await faucet.deployed();
+
+  // console.log("Faucet to:", faucet.address);
+
+
+
+  // const result = await faucet.owner();
+  // console.log("check owner:", result);
+
+  // const result2 = await faucet.hotwallet();
+  // console.log("check hotwallet:", result2);
+
+  // r = await ethers.provider.getBalance("0x9707c3C93c59Dc9cb6dcBfC4Dea3eD784D5726fa");
+  // console.log("test balance ", ethers.utils.formatEther(r));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
