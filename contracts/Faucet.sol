@@ -1,37 +1,25 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity ^0.8.6;
 
-import "hardhat/console.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {IERC20} from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-
-// TEMP SOLUTION UNTIL following file gets integrated into npm package @aave/protocol-v2 , Hardhat doesn't support imports via https.
-// https://github.com/aave/protocol-v2/blob/master/contracts/interfaces/IAaveIncentivesController.sol
-import "./IAaveIncentivesController.sol";
-import "./IWETHGateway.sol";
-
-import {ILendingPool} from "@aave/protocol-v2/contracts/interfaces/ILendingPool.sol";
-//import {IWETHGateway} from "@aave/protocol-v2/contracts/misc/interfaces/IWETHGateway.sol";
-import {IWETH} from "@aave/protocol-v2/contracts/misc/interfaces/IWETH.sol";
-
-// Asi ani tuto dependency nepotrebujem  pretoze zatial len na approve ?
-//import {IAToken} from "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
+import {IAaveIncentivesController} from "./Interfaces/IAaveIncentivesController.sol";
+import {ILendingPool} from "./Interfaces/ILendingPool.sol";
+import {IWETH} from "./Interfaces/IWETH.sol";
 
 contract Faucet {
     address public _owner;
     address public _faucetTarget;
 
-    uint256 public _dailyLimit; // In WEI
+    uint256 public _dailyLimit;
     uint256 public _CDStartTimestamp;
-    uint256 public _CDDuration; // In seconds
+    uint256 public _CDDuration;
 
-    ILendingPool public immutable POOL; // budem potreboval len address
+    ILendingPool public immutable POOL;
 
     IAaveIncentivesController public immutable INCENTIVES;
     IERC20 public immutable aWETH;
-
-    IWETH public immutable WETH; // vyuzijem pri claimovani incentives
-    IERC20 public immutable ERC20_WETH;
+    IWETH public immutable WETH;
 
     constructor(
         uint256 dailyLimit,
@@ -40,7 +28,7 @@ contract Faucet {
         address aaveIncentivesController,
         address aweth,
         address weth
-    ) public {
+    ) {
         _owner = msg.sender;
 
         _dailyLimit = dailyLimit;
@@ -50,7 +38,6 @@ contract Faucet {
         INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
 
         WETH = IWETH(weth);
-        ERC20_WETH = IERC20(weth);
         aWETH = IERC20(aweth);
     }
 
@@ -97,9 +84,9 @@ contract Faucet {
         address[] memory assets = new address[](1);
         assets[0] = address(aWETH);
 
-        INCENTIVES.claimRewards(assets, uint256(-1), address(this));
+        INCENTIVES.claimRewards(assets, type(uint256).max, address(this));
 
-        uint256 amountOfWETH = ERC20_WETH.balanceOf(address(this));
+        uint256 amountOfWETH = WETH.balanceOf(address(this));
         POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
     }
 
