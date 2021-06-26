@@ -18,7 +18,6 @@ import {IWETH} from "@aave/protocol-v2/contracts/misc/interfaces/IWETH.sol";
 //import {IAToken} from "@aave/protocol-v2/contracts/interfaces/IAToken.sol";
 
 contract Faucet {
-    // Tieto private veci prepisem na public a getre vymazem ... iba zbytocna komplikacia
     address public _owner;
     address public _faucetTarget;
 
@@ -26,24 +25,18 @@ contract Faucet {
     uint256 public _CDStartTimestamp;
     uint256 public _CDDuration; // In seconds
 
-    uint256 public constant SECONDS_IN_A_DAY = 1 days; // 86400 seconds
+    ILendingPool public immutable POOL; // budem potreboval len address
 
-    ILendingPool public immutable LENDING_POOL; // budem potreboval len address
-
-    // TEORETICKY NEPOTREBUJEM ?????? mozem ist cez lending pool  ale to by bolo asi komplikovanejsie ?
-    // Uvazujem nad tym ci to ale tak nespravit
-    IWETHGateway public immutable WETH_GATEWAY;
-
-    IAaveIncentivesController public immutable INCENTIVES_CONTROLLER;
+    IAaveIncentivesController public immutable INCENTIVES;
     IERC20 public immutable aWETH;
 
     IWETH public immutable WETH; // vyuzijem pri claimovani incentives
+    IERC20 public immutable ERC20_WETH;
 
     constructor(
         uint256 dailyLimit,
         address faucetTarget,
         address aaveLendingPool,
-        address aaveWETHGateway,
         address aaveIncentivesController,
         address aweth,
         address weth
@@ -53,17 +46,12 @@ contract Faucet {
         _dailyLimit = dailyLimit;
         _faucetTarget = faucetTarget;
 
-        LENDING_POOL = ILendingPool(aaveLendingPool);
-        WETH_GATEWAY = IWETHGateway(aaveWETHGateway);
-        INCENTIVES_CONTROLLER = IAaveIncentivesController(
-            aaveIncentivesController
-        );
+        POOL = ILendingPool(aaveLendingPool);
+        INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
 
         WETH = IWETH(weth);
-
-        // AUTHOREZE WETHGateway to use aWETH owned by this contract
+        ERC20_WETH = IERC20(weth);
         aWETH = IERC20(aweth);
-        IERC20(aweth).approve(aaveWETHGateway, uint256(-1));
     }
 
     modifier onlyOwner {
@@ -72,40 +60,33 @@ contract Faucet {
     }
 
     receive() external payable {
-        //  deposit(); Cannot be here
+        if (msg.sender != address(WETH)) {
+            deposit();
+        } // else: WETH is sending us back ETH, so don't do anything (to avoid recursion)
     }
 
-    // Mozno vyuzijem ?
-    //   receive() external payable {
-    //     if (msg.sender != address(token)) {
-    //         depositETH();
-    //     } // else: WETH is sending us back ETH, so don't do anything (to avoid recursion)
-    // }
+    function deposit() public payable {
+        WETH.deposit{value: msg.value}();
+        POOL.deposit(address(WETH), msg.value, address(this), 0);
+    }
 
-    function deposit() external payable {
-        WETH_GATEWAY.depositETH{value: msg.value}(
-            address(LENDING_POOL),
-            address(this),
-            0
-        );
-
-        // WETH.deposit{value: msg.value}();
-        // LENDING_POOL.deposit(address(WETH), msg.value, address(this), 0);
+    function _safeTransferETH(address to, uint256 value) internal {
+        (bool success, ) = to.call{value: value}(new bytes(0));
+        require(success, "ETH_TRANSFER_FAILED");
     }
 
     function doFaucetDrop(uint256 amount) external {
-        // require NOT ON COOLDOWN
-        require((block.timestamp - _CDDuration) <= _CDStartTimestamp);
-        // require AMOUNT IN DAILY LIMIT
-        require(amount <= _dailyLimit);
-        // require ENOUGH aTOKENS
-        require(faucetFunds() >= amount);
+        require((block.timestamp - _CDDuration) <= _CDStartTimestamp); // require NOT ON COOLDOWN
+        require(amount <= _dailyLimit); // require AMOUNT within DAILY LIMIT
+        require(faucetFunds() >= amount); // require ENOUGH aTOKENS
 
         // Update cooldown state
         _CDStartTimestamp = block.timestamp;
-        _CDDuration = SECONDS_IN_A_DAY / (_dailyLimit / amount);
+        _CDDuration = 1 days / (_dailyLimit / amount);
 
-        WETH_GATEWAY.withdrawETH(address(LENDING_POOL), amount, _faucetTarget);
+        POOL.withdraw(address(WETH), amount, address(this));
+        WETH.withdraw(amount);
+        _safeTransferETH(_faucetTarget, amount);
     }
 
     function faucetFunds() public view returns (uint256) {
@@ -116,54 +97,10 @@ contract Faucet {
         address[] memory assets = new address[](1);
         assets[0] = address(aWETH);
 
-        uint256 rewardsClaimed = INCENTIVES_CONTROLLER.claimRewards(
-            assets,
-            uint256(-1),
-            address(this)
-        );
+        INCENTIVES.claimRewards(assets, uint256(-1), address(this));
 
-        // Need to chcek because incentives can change in the future.
-        // If reward is WETH we deposit it for compounding effect.
-        if (INCENTIVES_CONTROLLER.REWARD_TOKEN() == address(WETH)) {
-            LENDING_POOL.deposit(
-                address(WETH),
-                rewardsClaimed,
-                address(this),
-                0
-            );
-        }
-    }
-
-    function withdrawFunds() external onlyOwner {
-        // ZDVOJENY KOD :(
-        address[] memory assets = new address[](1);
-        assets[0] = address(aWETH);
-
-        uint256 rewardsClaimed = INCENTIVES_CONTROLLER.claimRewards(
-            assets,
-            uint256(-1), // Everything
-            address(this)
-        );
-
-        // // Need to chcek because incentives can change in the future.
-        // // If reward is WETH we deposit it for compounding effect.
-        // if (INCENTIVES_CONTROLLER.REWARD_TOKEN() == address(WETH)) {
-        //     LENDING_POOL.deposit(
-        //         address(WETH),
-        //         rewardsClaimed,
-        //         address(this),
-        //         0
-        //     );
-        // }
-
-        // WETH ZMENIM ZA ETH
-        WETH.withdraw(IERC20(address(WETH)).balanceOf(address(this)));
-
-        WETH_GATEWAY.withdrawETH(
-            address(LENDING_POOL),
-            uint256(-1),
-            _faucetTarget
-        );
+        uint256 amountOfWETH = ERC20_WETH.balanceOf(address(this));
+        POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
     }
 
     function emergencyTokenTransfer(
@@ -178,9 +115,7 @@ contract Faucet {
         external
         onlyOwner
     {
-        //_safeTransferETH(to, amount);
-        (bool success, ) = to.call{value: amount}(new bytes(0));
-        require(success, "ETH_TRANSFER_FAILED");
+        _safeTransferETH(to, amount);
     }
 
     function setOwner(address newOwner) external onlyOwner {

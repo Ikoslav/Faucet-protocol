@@ -37,7 +37,7 @@ async function main() {
     123000,
     hotWalletSigner.address,
     LendingPool_Address,
-    WETHGateway_Address,
+    // WETHGateway_Address,
     IncentivesController_Address,
     amWMATIC_Token_Address,
     WMATIC_Token_Address
