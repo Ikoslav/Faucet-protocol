@@ -19,12 +19,16 @@ task("accounts", "Prints the list of accounts", async () => {
  */
 module.exports = {
   solidity: "0.8.4",
-  defaultNetwork: "mumbai",
+  defaultNetwork: "hardhat",
   networks:
   {
-    hardhat: {},
-    mumbai:
-    {
+    hardhat: {
+      forking: {
+        url: process.env.MATIC_PROVIDER
+      }
+    },
+
+    mumbai: {
       url: process.env.MUMBAI_PROVIDER,
       accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_FAUCETTARGET],
       gasPrice: 8000000000
