@@ -26,7 +26,8 @@ module.exports = {
     mumbai:
     {
       url: process.env.MUMBAI_PROVIDER,
-      accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_HOTWALLET],
+      accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_FAUCETTARGET],
+      gasPrice: 8000000000
     }
   }
 };
