@@ -57,17 +57,11 @@ contract Faucet {
         POOL.deposit(address(WETH), msg.value, address(this), 0);
     }
 
-    function _safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, "ETH_TRANSFER_FAILED");
-    }
-
     function doFaucetDrop(uint256 amount) external {
-        require((block.timestamp - _CDDuration) <= _CDStartTimestamp); // require NOT ON COOLDOWN
-        require(amount <= _dailyLimit); // require AMOUNT within DAILY LIMIT
-        require(faucetFunds() >= amount); // require ENOUGH aTOKENS
+        require((block.timestamp - _CDDuration) <= _CDStartTimestamp); // require not on cooldown.
+        require(amount <= _dailyLimit); // require amount within daily limit.
+        require(faucetFunds() >= amount); // require enough funds.
 
-        // Update cooldown state
         _CDStartTimestamp = block.timestamp;
         _CDDuration = 1 days / (_dailyLimit / amount);
 
@@ -111,6 +105,11 @@ contract Faucet {
 
     function setFaucetTarget(address newFaucetTarget) external onlyOwner {
         _faucetTarget = newFaucetTarget;
+    }
+
+    function _safeTransferETH(address to, uint256 value) internal {
+        (bool success, ) = to.call{value: value}(new bytes(0));
+        require(success, "ETH_TRANSFER_FAILED");
     }
 
     fallback() external payable {
