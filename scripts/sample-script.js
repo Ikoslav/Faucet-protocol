@@ -51,6 +51,8 @@ async function main() {
   const amWMATIC_Token = new hre.ethers.Contract(amWMATIC_Token_Address, amWMATIC_Token_ABI, ethers.provider);
   console.log("Allowance ", await ERC20Allowance(amWMATIC_Token, faucet.address, WETHGateway_Address));
 
+  //console.log("Test const value", (await faucet.testConst()).toString());
+
   // const result = await faucet.owner();
   // console.log("check owner:", result);
 
