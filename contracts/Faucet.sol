@@ -3,6 +3,8 @@ pragma solidity 0.6.12;
 
 import "hardhat/console.sol";
 
+import {IERC20} from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+
 // TEMP SOLUTION UNTIL following file gets integrated into npm package @aave/protocol-v2 , Hardhat doesn't support imports via https.
 // https://github.com/aave/protocol-v2/blob/master/contracts/interfaces/IAaveIncentivesController.sol
 import "./IAaveIncentivesController.sol";
@@ -66,20 +68,45 @@ contract Faucet {
     }
 
     receive() external payable {
-        deposit();
+        // Cannot be here
+        // deposit();
     }
 
-    function deposit() public payable {
-        // TODO DEPOSIT to aave
+    function deposit() external payable {
+        // Deposit to aave
+        // ZLY SOURCE CODE !
+        //  WETH_GATEWAY.depositETH{value: msg.value}(address(this), 0);
     }
 
     function doFaucetDrop(uint256 amount) external notOnCooldown {
-        // TODO
-        // withdrwa aTokens
         // Update cooldown  start time and  duration , duration is based on used daily limit
+        // ZLY SOURCE CODE !
+        //  WETH_GATEWAY.withdrawETH(amount, _faucetTarget);
     }
 
     // TODO Claim rewards separate  function ?
+
+    // function _safeTransferETH(address to, uint256 value) private {
+    //     (bool success, ) = to.call{value: value}(new bytes(0));
+    //     require(success, "ETH_TRANSFER_FAILED");
+    // }
+
+    function emergencyTokenTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlyOwner {
+        IERC20(token).transfer(to, amount);
+    }
+
+    function emergencyEtherTransfer(address to, uint256 amount)
+        external
+        onlyOwner
+    {
+        //_safeTransferETH(to, amount);
+        (bool success, ) = to.call{value: amount}(new bytes(0));
+        require(success, "ETH_TRANSFER_FAILED");
+    }
 
     function setOwner(address newOwner) external onlyOwner {
         _owner = newOwner;
@@ -99,5 +126,9 @@ contract Faucet {
 
     function dailyLimit() public view returns (uint256) {
         return _dailyLimit;
+    }
+
+    fallback() external payable {
+        revert("Fallback not allowed");
     }
 }
