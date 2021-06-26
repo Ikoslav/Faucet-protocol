@@ -8,41 +8,41 @@ import {ILendingPool} from "./interfaces/ILendingPool.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
 contract Faucet {
-    address public _owner;
-    address public _faucetTarget;
+    address public owner;
+    address public faucetTarget;
 
-    uint256 public _dailyLimit;
-    uint256 public _CDStartTimestamp;
-    uint256 public _CDDuration;
+    uint256 public dailyLimit;
+    uint256 public cooldownStartTimestamp;
+    uint256 public cooldownDuration;
 
     ILendingPool public immutable POOL;
-
     IAaveIncentivesController public immutable INCENTIVES;
+
     IERC20 public immutable aWETH;
     IWETH public immutable WETH;
 
     constructor(
-        uint256 dailyLimit,
-        address faucetTarget,
+        uint256 dailyLimit_,
+        address faucetTarget_,
         address aaveLendingPool,
         address aaveIncentivesController,
-        address aweth,
-        address weth
+        address aWETH_,
+        address WETH_
     ) {
-        _owner = msg.sender;
+        owner = msg.sender;
 
-        _dailyLimit = dailyLimit;
-        _faucetTarget = faucetTarget;
+        dailyLimit = dailyLimit_;
+        faucetTarget = faucetTarget_;
 
         POOL = ILendingPool(aaveLendingPool);
         INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
 
-        WETH = IWETH(weth);
-        aWETH = IERC20(aweth);
+        WETH = IWETH(WETH_);
+        aWETH = IERC20(aWETH_);
     }
 
     modifier onlyOwner {
-        require(msg.sender == _owner, "Only owner can call this function.");
+        require(msg.sender == owner, "Only owner can call this function.");
         _;
     }
 
@@ -58,16 +58,16 @@ contract Faucet {
     }
 
     function doFaucetDrop(uint256 amount) external {
-        require((block.timestamp - _CDDuration) <= _CDStartTimestamp); // require not on cooldown.
-        require(amount <= _dailyLimit); // require amount within daily limit.
+        require((block.timestamp - cooldownDuration) <= cooldownStartTimestamp); // require not on cooldown.
+        require(amount <= dailyLimit); // require amount within daily limit.
         require(faucetFunds() >= amount); // require enough funds.
 
-        _CDStartTimestamp = block.timestamp;
-        _CDDuration = 1 days / (_dailyLimit / amount);
+        cooldownStartTimestamp = block.timestamp;
+        cooldownDuration = 1 days / (dailyLimit / amount);
 
         POOL.withdraw(address(WETH), amount, address(this));
         WETH.withdraw(amount);
-        _safeTransferETH(_faucetTarget, amount);
+        _safeTransferETH(faucetTarget, amount);
     }
 
     function faucetFunds() public view returns (uint256) {
@@ -100,11 +100,11 @@ contract Faucet {
     }
 
     function setOwner(address newOwner) external onlyOwner {
-        _owner = newOwner;
+        owner = newOwner;
     }
 
     function setFaucetTarget(address newFaucetTarget) external onlyOwner {
-        _faucetTarget = newFaucetTarget;
+        faucetTarget = newFaucetTarget;
     }
 
     function _safeTransferETH(address to, uint256 value) internal {
