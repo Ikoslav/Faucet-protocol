@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.4;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {IAaveIncentivesController} from "./Interfaces/IAaveIncentivesController.sol";
-import {ILendingPool} from "./Interfaces/ILendingPool.sol";
-import {IWETH} from "./Interfaces/IWETH.sol";
+import {IAaveIncentivesController} from "./interfaces/IAaveIncentivesController.sol";
+import {ILendingPool} from "./interfaces/ILendingPool.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
 
 contract Faucet {
     address public _owner;
