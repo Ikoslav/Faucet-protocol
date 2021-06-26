@@ -56,5 +56,18 @@ describe("Faucet contract - MUMBAI TESTNET", function () {
             await (await faucet.setFaucetTarget(owner.address)).wait();
             expect(await faucet.faucetTarget()).to.equal(owner.address);
         });
+
+        it("Should convert directly send eth to aTokens (faucet funds)", async function () {
+            const sendingValue = ethers.utils.parseEther("0.0001");
+            let tx = await owner.sendTransaction({
+                to: faucet.address,
+                gasPrice: 8000000000,
+                gasLimit: 500000,
+                value: sendingValue,
+            });
+
+            // faucetFunds grater than or equal to sendingValue
+            expect((await faucet.faucetFunds()).gte(sendingValue));
+        });
     });
 });

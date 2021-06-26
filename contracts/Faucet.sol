@@ -39,6 +39,8 @@ contract Faucet {
 
         WETH = IWETH(WETH_);
         aWETH = IERC20(aWETH_);
+
+        IERC20(WETH_).approve(aaveLendingPool, type(uint256).max);
     }
 
     modifier onlyOwner {
@@ -52,7 +54,7 @@ contract Faucet {
         } // else: WETH is sending us back ETH, so don't do anything (to avoid recursion)
     }
 
-    function deposit() public payable {
+    function deposit() internal {
         WETH.deposit{value: msg.value}();
         POOL.deposit(address(WETH), msg.value, address(this), 0);
     }
@@ -67,7 +69,7 @@ contract Faucet {
 
         POOL.withdraw(address(WETH), amount, address(this));
         WETH.withdraw(amount);
-        _safeTransferETH(faucetTarget, amount);
+        safeTransferETH(faucetTarget, amount);
     }
 
     function faucetFunds() public view returns (uint256) {
@@ -96,7 +98,12 @@ contract Faucet {
         external
         onlyOwner
     {
-        _safeTransferETH(to, amount);
+        safeTransferETH(to, amount);
+    }
+
+    function safeTransferETH(address to, uint256 value) internal {
+        (bool success, ) = to.call{value: value}(new bytes(0));
+        require(success, "ETH_TRANSFER_FAILED");
     }
 
     function setOwner(address newOwner) external onlyOwner {
@@ -105,11 +112,6 @@ contract Faucet {
 
     function setFaucetTarget(address newFaucetTarget) external onlyOwner {
         faucetTarget = newFaucetTarget;
-    }
-
-    function _safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, "ETH_TRANSFER_FAILED");
     }
 
     fallback() external payable {
