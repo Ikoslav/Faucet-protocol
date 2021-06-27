@@ -99,8 +99,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
             expect((await faucet.faucetFunds()).gte(sendingValue));
 
             // CONFIRM independently from token address
-            const IERC20_Artifact = await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
-            const amWMATICToken = await ethers.getContractAt(IERC20_Artifact.abi, amWMATIC, owner);
+            const amWMATICToken = await ethers.getContractAt(await IERC20_ABI(), amWMATIC, owner);
             expect((await amWMATICToken.balanceOf(faucet.address)).gte(sendingValue));
         });
 
@@ -137,8 +136,29 @@ describe("Faucet contract - MATIC MAINNET", function () {
             expect(ownerBalanceAfter.eq(ownerBalanceBefore.add(sendingValue)));
         });
 
+        it("Should retrieve stuck tokens in contract", async function () {
+            const sendingValue = ethers.utils.parseEther("0.0002");
+
+            await owner.sendTransaction({
+                to: faucet.address,
+                gasPrice: 8000000000,
+                gasLimit: 500000,
+                value: sendingValue,
+            });
+
+            await (await faucet.emergencyTokenTransfer(amWMATIC, owner.address, sendingValue)).wait();
+
+            const amWMATICToken = await ethers.getContractAt(await IERC20_ABI(), amWMATIC, owner);
+            expect((await amWMATICToken.balanceOf(owner.address)).eq(sendingValue));
+        });
+
+
     });
 });
+
+async function IERC20_ABI() {
+    return (await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20")).abi;
+}
 
 async function AddressBalance(address) {
     return await ethers.provider.getBalance(address);
