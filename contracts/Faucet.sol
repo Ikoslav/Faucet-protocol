@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+//import "hardhat/console.sol";
+
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IAaveIncentivesController} from "./interfaces/IAaveIncentivesController.sol";
@@ -60,9 +62,12 @@ contract Faucet {
     }
 
     function doFaucetDrop(uint256 amount) external {
-        require((block.timestamp - cooldownDuration) <= cooldownStartTimestamp); // require not on cooldown.
-        require(amount <= dailyLimit); // require amount within daily limit.
-        require(faucetFunds() >= amount); // require enough funds.
+        require(
+            (block.timestamp - cooldownDuration) >= cooldownStartTimestamp,
+            "On cooldown."
+        );
+        require(amount <= dailyLimit, "Exceeing daily limit.");
+        require(amount <= faucetFunds(), "Not enough funds.");
 
         cooldownStartTimestamp = block.timestamp;
         cooldownDuration = 1 days / (dailyLimit / amount);
@@ -104,6 +109,10 @@ contract Faucet {
     function safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, "ETH transfer failed.");
+    }
+
+    function setDailyLimit(uint256 newDailyLimit) external onlyOwner {
+        dailyLimit = newDailyLimit;
     }
 
     function setOwner(address newOwner) external onlyOwner {

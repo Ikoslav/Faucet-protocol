@@ -9,6 +9,9 @@ describe("Faucet contract - MATIC MAINNET", function () {
     let OnlyOwnerAllowed = "Only owner can call this function.";
     let FallbackNotAllowe = "Fallback not allowed.";
     let ETHTransferFailed = "ETH transfer failed.";
+    let OnCooldown = "On cooldown.";
+    let ExceedingDailyLimit = "Exceeing daily limit.";
+    let NotEnoughFunds = "Not enough funds.";
 
     // AAVE Parts MUMBAI TESNET
     // let LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
@@ -65,6 +68,17 @@ describe("Faucet contract - MATIC MAINNET", function () {
             expect(await faucet.WETH()).to.equal(WMATIC);
         });
 
+        it("Should revert when setDailyLimit is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).setDailyLimit(0)
+            ).to.be.revertedWith(OnlyOwnerAllowed);
+        });
+
+        it("Should set daily limit", async function () {
+            const newDailyLimit = ethers.utils.parseEther("0.00125");
+            await (await faucet.setDailyLimit(newDailyLimit)).wait();
+            expect(await faucet.dailyLimit()).to.equal(newDailyLimit);
+        });
+
         it("Should revert transaction when setOwner is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).setOwner(faucetTarget.address)
             ).to.be.revertedWith(OnlyOwnerAllowed);
@@ -88,19 +102,13 @@ describe("Faucet contract - MATIC MAINNET", function () {
         it("Should convert directly send eth to aTokens (faucet funds)", async function () {
             const sendingValue = ethers.utils.parseEther("0.0001");
 
-            await owner.sendTransaction({
-                to: faucet.address,
-                gasPrice: 8000000000,
-                gasLimit: 500000,
-                value: sendingValue,
-            });
+            await SendEthTo(owner, faucet.address, sendingValue);
 
             // CONFIRM from faucet funds.
             expect((await faucet.faucetFunds()).gte(sendingValue));
 
             // CONFIRM independently from token address
-            const amWMATICToken = await ethers.getContractAt(await IERC20_ABI(), amWMATIC, owner);
-            expect((await amWMATICToken.balanceOf(faucet.address)).gte(sendingValue));
+            expect((await ERC20_Balance(amWMATIC, faucet.address)).gte(sendingValue));
         });
 
         it("Should revert transaction when emergencyEtherTransfer is not used by owner", async function () {
@@ -139,22 +147,49 @@ describe("Faucet contract - MATIC MAINNET", function () {
         it("Should retrieve stuck tokens in contract", async function () {
             const sendingValue = ethers.utils.parseEther("0.0002");
 
-            await owner.sendTransaction({
-                to: faucet.address,
-                gasPrice: 8000000000,
-                gasLimit: 500000,
-                value: sendingValue,
-            });
+            await SendEthTo(owner, faucet.address, sendingValue);
 
             await (await faucet.emergencyTokenTransfer(amWMATIC, owner.address, sendingValue)).wait();
 
-            const amWMATICToken = await ethers.getContractAt(await IERC20_ABI(), amWMATIC, owner);
-            expect((await amWMATICToken.balanceOf(owner.address)).eq(sendingValue));
+            expect((await ERC20_Balance(amWMATIC, owner.address)).eq(sendingValue));
         });
 
+        it("Should revert doFaucetDrop because we want exceed daily limit", async function () {
+            const funds = dailyLimit.add(1); // exceding daily limit
+
+            await SendEthTo(owner, faucet.address, funds);
+
+            await expect(faucet.doFaucetDrop(funds)
+            ).to.be.revertedWith(ExceedingDailyLimit);
+        });
+
+        it("Should revert doFaucetDrop because we want exceed funds", async function () {
+            const halfDailyLimit = dailyLimit.div(2);
+            const quarterDailyLimit = dailyLimit.div(4);
+
+            // Fund quarter of daily limit 
+            await SendEthTo(owner, faucet.address, quarterDailyLimit);
+            // doFaucetDrop with more that we have, but within daily limit
+            await expect(faucet.doFaucetDrop(halfDailyLimit)
+            ).to.be.revertedWith(NotEnoughFunds);
+        });
 
     });
 });
+
+async function ERC20_Balance(tokenAddress, ownerAddress) {
+    const tokenContract = await ethers.getContractAt(await IERC20_ABI(), tokenAddress, ethers.provider);
+    return await tokenContract.balanceOf(ownerAddress);
+}
+
+async function SendEthTo(signer, address, wei) {
+    await signer.sendTransaction({
+        to: address,
+        gasPrice: 8000000000,
+        gasLimit: 500000,
+        value: wei,
+    });
+}
 
 async function IERC20_ABI() {
     return (await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20")).abi;
