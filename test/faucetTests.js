@@ -29,7 +29,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
     let WMATIC = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
 
     // https://docs.ethers.io/v4/api-utils.html
-    let dailyLimit = ethers.utils.parseEther("0.01");
+    let dailyLimit = ethers.utils.parseEther("0.001");
 
     let Faucet;
     let faucet;
@@ -63,7 +63,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
         it("Should set the right deplyment variables", async function () {
             expect(await faucet.owner()).to.equal(owner.address);
             expect(await faucet.faucetTarget()).to.equal(faucetTarget.address);
-            expect(await faucet.dailyLimit()).to.equal(dailyLimit);
+            expect(await faucet.dailyLimit()).to.equal(dailyLimit); // if daily limit is 0 contract will be crated with value 1
             expect(await faucet.cooldownStartTimestamp()).to.equal(ethers.BigNumber.from(0));
             expect(await faucet.cooldownDuration()).to.equal(ethers.BigNumber.from(0));
             expect(await faucet.POOL()).to.equal(LendingPool);
@@ -203,6 +203,48 @@ describe("Faucet contract - MATIC MAINNET", function () {
 
             expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(quarterDailyLimit)));
         });
+
+        it("Should trigger faucet drop cooldown.", async function () {
+            const twoTimesDailyLimit = dailyLimit.mul(2);
+            const quarterDailyLimit = dailyLimit.div(4);
+
+            await SendEthTo(owner, faucet.address, twoTimesDailyLimit); // Get more than enough funds for this operation.
+
+            await (await faucet.doFaucetDrop(quarterDailyLimit)).wait();
+            await expect(faucet.doFaucetDrop(quarterDailyLimit)
+            ).to.be.revertedWith(OnCooldown);
+        });
+
+        it("Should do two faucet drops.", async function () {
+            const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+            await SendEthTo(owner, faucet.address, dailyLimit); // Get more than enough funds for this operation.
+
+            // Calculate amount that it triggers for x seconds
+            const cecondsInADay = 86400;
+            const seconds = 15; // keep this big enough 
+            const amount = dailyLimit.mul(seconds).div(cecondsInADay);
+
+            var faucetTargetBalanceBefore;
+            var faucetTargetBalanceAfter;
+
+            faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
+            await (await faucet.doFaucetDrop(amount)).wait();
+            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
+            faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
+
+            expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(amount)));
+
+            await sleep(seconds * 1000);
+
+            faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
+            await (await faucet.doFaucetDrop(amount)).wait();
+            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
+            faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
+
+            expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(amount)));
+        });
+
 
     });
 });
