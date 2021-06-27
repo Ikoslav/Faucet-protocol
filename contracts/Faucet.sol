@@ -55,13 +55,9 @@ contract Faucet {
 
     receive() external payable {
         if (msg.sender != address(WETH)) {
-            deposit();
+            WETH.deposit{value: msg.value}();
+            POOL.deposit(address(WETH), msg.value, address(this), 0);
         } // else: WETH is sending us back ETH, so don't do anything (to avoid recursion)
-    }
-
-    function deposit() internal {
-        WETH.deposit{value: msg.value}();
-        POOL.deposit(address(WETH), msg.value, address(this), 0);
     }
 
     function doFaucetDrop(uint256 amount) external {
@@ -93,6 +89,13 @@ contract Faucet {
 
         uint256 amountOfWETH = WETH.balanceOf(address(this));
         POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
+    }
+
+    function rewardsAmount() public view returns (uint256) {
+        address[] memory assets = new address[](1);
+        assets[0] = address(aWETH);
+
+        return INCENTIVES.getRewardsBalance(assets, address(this));
     }
 
     function emergencyTokenTransfer(
