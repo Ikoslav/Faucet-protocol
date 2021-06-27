@@ -88,5 +88,35 @@ describe("Faucet contract - MATIC MAINNET", function () {
             const amWMATICToken = await ethers.getContractAt(IERC20_Artifact.abi, amWMATIC, owner);
             expect((await amWMATICToken.balanceOf(faucet.address)).gte(sendingValue));
         });
+
+        it("Should retrieve stuck ether in contract", async function () {
+
+            const sendingValue = ethers.utils.parseEther("0.0001");
+
+            SelfdestructTransfer = await ethers.getContractFactory("SelfdestructTransfer");
+            selfdestructTransfer = await SelfdestructTransfer.deploy({ value: sendingValue });
+
+            expect((await AddressBalance(faucet.address)).eq(ethers.BigNumber.from(0)));
+            expect((await AddressBalance(selfdestructTransfer.address)).eq(sendingValue));
+
+            await (await selfdestructTransfer.destroyAndTransfer(faucet.address)).wait();
+
+            // now we got stuck eth on faucet contract
+            expect((await AddressBalance(faucet.address)).eq(sendingValue));
+
+            // we send stuck eth to owner address and check.
+            ownerBalanceBefore = await AddressBalance(owner.address);
+            await (await faucet.emergencyEtherTransfer(owner.address, sendingValue)).wait();
+            ownerBalanceAfter = await AddressBalance(owner.address);
+
+            expect(ownerBalanceAfter.eq(ownerBalanceBefore.add(sendingValue)));
+        });
+
+        // emergency token transfer 
     });
 });
+
+async function AddressBalance(address) {
+    return await ethers.provider.getBalance(address);
+}
+
