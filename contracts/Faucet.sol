@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -33,8 +33,11 @@ contract Faucet {
     ) {
         owner = msg.sender;
 
-        dailyLimit = dailyLimit_;
         faucetTarget = faucetTarget_;
+
+        dailyLimit = (dailyLimit_ == 0) ? 1 : dailyLimit_; // Ensure non zero daily limit
+        cooldownStartTimestamp = 0;
+        cooldownDuration = 0;
 
         POOL = ILendingPool(aaveLendingPool);
         INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
@@ -42,7 +45,7 @@ contract Faucet {
         WETH = IWETH(WETH_);
         aWETH = IERC20(aWETH_);
 
-        IERC20(WETH_).approve(aaveLendingPool, type(uint256).max);
+        IERC20(WETH_).approve(aaveLendingPool, type(uint256).max); // Needed approval
     }
 
     modifier onlyOwner {
@@ -66,6 +69,7 @@ contract Faucet {
             (block.timestamp - cooldownDuration) >= cooldownStartTimestamp,
             "On cooldown."
         );
+        require(amount > 0, "Amount cannot be zero.");
         require(amount <= dailyLimit, "Exceeing daily limit.");
         require(amount <= faucetFunds(), "Not enough funds.");
 
@@ -112,6 +116,7 @@ contract Faucet {
     }
 
     function setDailyLimit(uint256 newDailyLimit) external onlyOwner {
+        require(newDailyLimit > 0, "Daily limit cannot be 0.");
         dailyLimit = newDailyLimit;
     }
 

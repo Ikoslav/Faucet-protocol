@@ -12,6 +12,9 @@ describe("Faucet contract - MATIC MAINNET", function () {
     let OnCooldown = "On cooldown.";
     let ExceedingDailyLimit = "Exceeing daily limit.";
     let NotEnoughFunds = "Not enough funds.";
+    let AmountCannotBeZero = "Amount cannot be zero.";
+    let DailyLimitCannotBeZero = "Daily limit cannot be 0.";
+
 
     // AAVE Parts MUMBAI TESNET
     // let LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
@@ -73,6 +76,11 @@ describe("Faucet contract - MATIC MAINNET", function () {
             ).to.be.revertedWith(OnlyOwnerAllowed);
         });
 
+        it("Should revert when setDailyLimit is set to 0", async function () {
+            await expect(faucet.setDailyLimit(0)
+            ).to.be.revertedWith(DailyLimitCannotBeZero);
+        });
+
         it("Should set daily limit", async function () {
             const newDailyLimit = ethers.utils.parseEther("0.00125");
             await (await faucet.setDailyLimit(newDailyLimit)).wait();
@@ -122,7 +130,6 @@ describe("Faucet contract - MATIC MAINNET", function () {
         });
 
         it("Should retrieve stuck ether in contract", async function () {
-
             const sendingValue = ethers.utils.parseEther("0.0001");
 
             SelfdestructTransfer = await ethers.getContractFactory("SelfdestructTransfer");
@@ -153,9 +160,13 @@ describe("Faucet contract - MATIC MAINNET", function () {
 
             expect((await ERC20_Balance(amWMATIC, owner.address)).eq(sendingValue));
         });
+    });
 
-        it("Should revert doFaucetDrop because we want exceed daily limit", async function () {
-            const funds = dailyLimit.add(1); // exceding daily limit
+    describe("Faucet Drop", function () {
+        this.timeout(1000000);
+
+        it("Should revert doFaucetDrop because we exceed daily limit", async function () {
+            const funds = dailyLimit.add(1); // exceed daily limit
 
             await SendEthTo(owner, faucet.address, funds);
 
@@ -163,7 +174,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
             ).to.be.revertedWith(ExceedingDailyLimit);
         });
 
-        it("Should revert doFaucetDrop because we want exceed funds", async function () {
+        it("Should revert doFaucetDrop because we exceed funds", async function () {
             const halfDailyLimit = dailyLimit.div(2);
             const quarterDailyLimit = dailyLimit.div(4);
 
@@ -172,6 +183,25 @@ describe("Faucet contract - MATIC MAINNET", function () {
             // doFaucetDrop with more that we have, but within daily limit
             await expect(faucet.doFaucetDrop(halfDailyLimit)
             ).to.be.revertedWith(NotEnoughFunds);
+        });
+
+
+        it("Should revert doFaucetDrop with amount == 0", async function () {
+            await expect(faucet.doFaucetDrop(0) // ZERO AMOUNT TO DROP - potential div by zero
+            ).to.be.revertedWith(AmountCannotBeZero);
+        });
+
+        it("Should do faucet drop.", async function () {
+            const twoTimesDailyLimit = dailyLimit.mul(2);
+            const quarterDailyLimit = dailyLimit.div(4);
+
+            await SendEthTo(owner, faucet.address, twoTimesDailyLimit); // Get more than enough funds for this operation.
+
+            const faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
+            await (await faucet.doFaucetDrop(quarterDailyLimit)).wait();
+            const faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
+
+            expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(quarterDailyLimit)));
         });
 
     });
