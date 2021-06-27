@@ -26,15 +26,16 @@ describe("Faucet contract - MATIC MAINNET", function () {
     let owner;
     let faucetTarget;
 
+    before(async function () {
+        const accounts = await ethers.getSigners();
+        owner = accounts[0];
+        faucetTarget = accounts[1];
+    });
+
     beforeEach(async function () {
         this.timeout(1000000);
 
         Faucet = await ethers.getContractFactory("Faucet");
-        //[owner, faucetTarget] = await ethers.getSigners();
-        const accounts = await ethers.getSigners();
-
-        owner = accounts[0];
-        faucetTarget = accounts[1];
 
         faucet = await Faucet.deploy(
             dailyLimit,
