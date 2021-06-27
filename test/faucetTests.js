@@ -5,6 +5,11 @@ const { ethers } = require("hardhat");
 
 describe("Faucet contract - MATIC MAINNET", function () {
 
+    // Possible errors
+    let OnlyOwnerAllowed = "Only owner can call this function.";
+    let FallbackNotAllowe = "Fallback not allowed.";
+    let ETHTransferFailed = "ETH transfer failed.";
+
     // AAVE Parts MUMBAI TESNET
     // let LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
     // let IncentivesController = "0xd41aE58e803Edf4304334acCE4DC4Ec34a63C644";
@@ -60,6 +65,16 @@ describe("Faucet contract - MATIC MAINNET", function () {
             expect(await faucet.WETH()).to.equal(WMATIC);
         });
 
+        it("Should revert transaction when setOwner is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).setOwner(faucetTarget.address)
+            ).to.be.revertedWith(OnlyOwnerAllowed);
+        });
+
+        it("Should revert transaction when setFaucetTarget is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).setFaucetTarget(faucetTarget.address)
+            ).to.be.revertedWith(OnlyOwnerAllowed);
+        });
+
         it("Should set faucet owner", async function () {
             await (await faucet.setOwner(faucetTarget.address)).wait();
             expect(await faucet.owner()).to.equal(faucetTarget.address);
@@ -73,7 +88,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
         it("Should convert directly send eth to aTokens (faucet funds)", async function () {
             const sendingValue = ethers.utils.parseEther("0.0001");
 
-            const tx = await owner.sendTransaction({
+            await owner.sendTransaction({
                 to: faucet.address,
                 gasPrice: 8000000000,
                 gasLimit: 500000,
@@ -87,6 +102,16 @@ describe("Faucet contract - MATIC MAINNET", function () {
             const IERC20_Artifact = await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
             const amWMATICToken = await ethers.getContractAt(IERC20_Artifact.abi, amWMATIC, owner);
             expect((await amWMATICToken.balanceOf(faucet.address)).gte(sendingValue));
+        });
+
+        it("Should revert transaction when emergencyEtherTransfer is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).emergencyEtherTransfer(faucetTarget.address, 0)
+            ).to.be.revertedWith(OnlyOwnerAllowed);
+        });
+
+        it("Should revert transaction when emergencyTokenTransfer is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).emergencyTokenTransfer(amWMATIC, faucetTarget.address, 0)
+            ).to.be.revertedWith(OnlyOwnerAllowed);
         });
 
         it("Should retrieve stuck ether in contract", async function () {
@@ -112,7 +137,6 @@ describe("Faucet contract - MATIC MAINNET", function () {
             expect(ownerBalanceAfter.eq(ownerBalanceBefore.add(sendingValue)));
         });
 
-        // emergency token transfer 
     });
 });
 

@@ -103,7 +103,7 @@ contract Faucet {
 
     function safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, "ETH_TRANSFER_FAILED");
+        require(success, "ETH transfer failed.");
     }
 
     function setOwner(address newOwner) external onlyOwner {
@@ -115,6 +115,6 @@ contract Faucet {
     }
 
     fallback() external payable {
-        revert("Fallback not allowed");
+        revert("Fallback not allowed.");
     }
 }
