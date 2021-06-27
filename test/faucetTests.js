@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 
 // https://hardhat.org/tutorial/testing-contracts.html
 
@@ -26,6 +27,8 @@ describe("Faucet contract - MATIC MAINNET", function () {
     let faucetTarget;
 
     beforeEach(async function () {
+        this.timeout(1000000);
+
         Faucet = await ethers.getContractFactory("Faucet");
         //[owner, faucetTarget] = await ethers.getSigners();
         const accounts = await ethers.getSigners();
@@ -43,7 +46,7 @@ describe("Faucet contract - MATIC MAINNET", function () {
     });
 
     describe("Deployment", function () {
-        this.timeout(60000);
+        this.timeout(1000000);
 
         it("Should set the right deplyment variables", async function () {
             expect(await faucet.owner()).to.equal(owner.address);
@@ -68,15 +71,21 @@ describe("Faucet contract - MATIC MAINNET", function () {
 
         it("Should convert directly send eth to aTokens (faucet funds)", async function () {
             const sendingValue = ethers.utils.parseEther("0.0001");
-            let tx = await owner.sendTransaction({
+
+            const tx = await owner.sendTransaction({
                 to: faucet.address,
                 gasPrice: 8000000000,
                 gasLimit: 500000,
                 value: sendingValue,
             });
 
-            // faucetFunds grater than or equal to sendingValue
+            // CONFIRM from faucet funds.
             expect((await faucet.faucetFunds()).gte(sendingValue));
+
+            // CONFIRM independently from token address
+            const IERC20_Artifact = await artifacts.readArtifact("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
+            const amWMATICToken = await ethers.getContractAt(IERC20_Artifact.abi, amWMATIC, owner);
+            expect((await amWMATICToken.balanceOf(faucet.address)).gte(sendingValue));
         });
     });
 });
