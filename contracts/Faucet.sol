@@ -36,6 +36,7 @@ contract Faucet {
     string public constant DAILY_LIMIT_CANNOT_BE_ZERO = "8"; // 'Daily limit cannot be 0.'
 
     constructor(
+        address owner_,
         uint256 dailyLimit_,
         address faucetTarget_,
         address aaveLendingPool,
@@ -43,7 +44,7 @@ contract Faucet {
         address aWETH_,
         address WETH_
     ) {
-        owner = msg.sender;
+        owner = owner_;
 
         faucetTarget = faucetTarget_;
 
