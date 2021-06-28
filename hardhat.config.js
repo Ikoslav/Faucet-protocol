@@ -1,5 +1,6 @@
 require('dotenv').config();
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -28,11 +29,20 @@ module.exports = {
       }
     },
 
+    matic: {
+      url: process.env.MATIC_PROVIDER,
+      /// accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_FAUCETTARGET],
+      // gasPrice: 7000000000
+    },
+
     mumbai: {
       url: process.env.MUMBAI_PROVIDER,
       accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_FAUCETTARGET],
       gasPrice: 7000000000
     }
+  },
+  etherscan: {
+    apiKey: process.env.POLYGONSCAN_API_KEY
   }
 };
 
