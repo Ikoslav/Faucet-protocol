@@ -67,6 +67,7 @@ describe("Faucet contract", function () {
         this.timeout(1000000);
 
         faucet = await Faucet.deploy(
+            owner.address,
             dailyLimit,
             faucetTarget.address,
             LendingPool,
