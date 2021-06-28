@@ -23,6 +23,18 @@ contract Faucet {
     IERC20 public immutable aWETH;
     IWETH public immutable WETH;
 
+    address[] private assetsOfInterest;
+
+    // ERROS
+    string public constant ONLY_OWNER = "1"; // 'Only owner can call this function.'
+    string public constant NO_FALLBACK = "2"; // 'Fallback not allowed.'
+    string public constant VALUE_TRANSFER_FAILED = "3"; // 'Value transfer failed.'
+    string public constant ON_COOLDOWN = "4"; // 'On cooldown.'
+    string public constant EXCEEDING_DAILY_LIMIT = "5"; // 'Exceeing daily limit.'
+    string public constant NOT_ENOUGH_FUNDS = "6"; // 'Not enough funds.'
+    string public constant AMOUNT_CANNOT_BE_ZERO = "7"; // 'Amount cannot be zero.'
+    string public constant DAILY_LIMIT_CANNOT_BE_ZERO = "8"; // 'Daily limit cannot be 0.'
+
     constructor(
         uint256 dailyLimit_,
         address faucetTarget_,
@@ -46,10 +58,13 @@ contract Faucet {
         aWETH = IERC20(aWETH_);
 
         IERC20(WETH_).approve(aaveLendingPool, type(uint256).max); // Needed approval
+
+        assetsOfInterest = new address[](1); // My only asset of interest is this aToken
+        assetsOfInterest[0] = address(aWETH_);
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Only owner can call this function.");
+        require(msg.sender == owner, ONLY_OWNER);
         _;
     }
 
@@ -63,11 +78,11 @@ contract Faucet {
     function doFaucetDrop(uint256 amount) external {
         require(
             (block.timestamp - cooldownDuration) >= cooldownStartTimestamp,
-            "On cooldown."
+            ON_COOLDOWN
         );
-        require(amount > 0, "Amount cannot be zero.");
-        require(amount <= dailyLimit, "Exceeing daily limit.");
-        require(amount <= faucetFunds(), "Not enough funds.");
+        require(amount > 0, AMOUNT_CANNOT_BE_ZERO);
+        require(amount <= dailyLimit, EXCEEDING_DAILY_LIMIT);
+        require(amount <= faucetFunds(), NOT_ENOUGH_FUNDS);
 
         cooldownStartTimestamp = block.timestamp;
         cooldownDuration = 1 days / (dailyLimit / amount);
@@ -82,20 +97,22 @@ contract Faucet {
     }
 
     function claimRewards() external {
-        address[] memory assets = new address[](1);
-        assets[0] = address(aWETH);
-
-        INCENTIVES.claimRewards(assets, type(uint256).max, address(this));
+        INCENTIVES.claimRewards(
+            assetsOfInterest,
+            type(uint256).max,
+            address(this)
+        );
 
         uint256 amountOfWETH = WETH.balanceOf(address(this));
-        POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
+
+        if (amountOfWETH > 0) {
+            // deposition 0 would throw error.
+            POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
+        }
     }
 
     function rewardsAmount() public view returns (uint256) {
-        address[] memory assets = new address[](1);
-        assets[0] = address(aWETH);
-
-        return INCENTIVES.getRewardsBalance(assets, address(this));
+        return INCENTIVES.getRewardsBalance(assetsOfInterest, address(this));
     }
 
     function emergencyTokenTransfer(
@@ -115,11 +132,11 @@ contract Faucet {
 
     function safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, "ETH transfer failed.");
+        require(success, VALUE_TRANSFER_FAILED);
     }
 
     function setDailyLimit(uint256 newDailyLimit) external onlyOwner {
-        require(newDailyLimit > 0, "Daily limit cannot be 0.");
+        require(newDailyLimit > 0, DAILY_LIMIT_CANNOT_BE_ZERO);
         dailyLimit = newDailyLimit;
     }
 
@@ -132,6 +149,6 @@ contract Faucet {
     }
 
     fallback() external payable {
-        revert("Fallback not allowed.");
+        revert(NO_FALLBACK);
     }
 }

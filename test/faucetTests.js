@@ -1,3 +1,5 @@
+let sleep = ms => new Promise(res => setTimeout(res, ms));
+
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const hre = require("hardhat");
@@ -6,22 +8,25 @@ const hre = require("hardhat");
 
 describe("Faucet contract", function () {
 
-    // Possible errors
-    let OnlyOwnerAllowed = "Only owner can call this function.";
-    let FallbackNotAllowe = "Fallback not allowed.";
-    let ETHTransferFailed = "ETH transfer failed.";
-    let OnCooldown = "On cooldown.";
-    let ExceedingDailyLimit = "Exceeing daily limit.";
-    let NotEnoughFunds = "Not enough funds.";
-    let AmountCannotBeZero = "Amount cannot be zero.";
-    let DailyLimitCannotBeZero = "Daily limit cannot be 0.";
+    // ERROS
+    let ONLY_OWNER = "1";
+    let NO_FALLBACK = "2";
+    let VALUE_TRANSFER_FAILED = "3";
+    let ON_COOLDOWN = "4";
+    let EXCEEDING_DAILY_LIMIT = "5";
+    let NOT_ENOUGH_FUNDS = "6";
+    let AMOUNT_CANNOT_BE_ZERO = "7";
+    let DAILY_LIMIT_CANNOT_BE_ZERO = "8";
 
     let LendingPool;
     let IncentivesController;
     let amWMATIC;
     let WMATIC;
 
+    let testingOnLiveNet;
+
     if (hre.network.name == "hardhat") {
+        testingOnLiveNet = false;
         // ADDRESSES FROM MATIC MAINNET - BECAUSE WE USE FORKING
         LendingPool = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
         IncentivesController = "0x357D51124f59836DeD84c8a1730D72B749d8BC23";
@@ -29,6 +34,8 @@ describe("Faucet contract", function () {
         WMATIC = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
     }
     else if (hre.network.name == "mumbai") {
+        testingOnLiveNet = true;
+
         // ADDRESSES FROM MUMBAI TESTNET
         LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
         IncentivesController = "0xd41aE58e803Edf4304334acCE4DC4Ec34a63C644";
@@ -84,12 +91,12 @@ describe("Faucet contract", function () {
 
         it("Should revert when setDailyLimit is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).setDailyLimit(0)
-            ).to.be.revertedWith(OnlyOwnerAllowed);
+            ).to.be.revertedWith(ONLY_OWNER);
         });
 
         it("Should revert when setDailyLimit is set to 0", async function () {
             await expect(faucet.setDailyLimit(0)
-            ).to.be.revertedWith(DailyLimitCannotBeZero);
+            ).to.be.revertedWith(DAILY_LIMIT_CANNOT_BE_ZERO);
         });
 
         it("Should set daily limit", async function () {
@@ -100,12 +107,12 @@ describe("Faucet contract", function () {
 
         it("Should revert transaction when setOwner is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).setOwner(faucetTarget.address)
-            ).to.be.revertedWith(OnlyOwnerAllowed);
+            ).to.be.revertedWith(ONLY_OWNER);
         });
 
         it("Should revert transaction when setFaucetTarget is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).setFaucetTarget(faucetTarget.address)
-            ).to.be.revertedWith(OnlyOwnerAllowed);
+            ).to.be.revertedWith(ONLY_OWNER);
         });
 
         it("Should set faucet owner", async function () {
@@ -132,12 +139,12 @@ describe("Faucet contract", function () {
 
         it("Should revert transaction when emergencyEtherTransfer is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).emergencyEtherTransfer(faucetTarget.address, 0)
-            ).to.be.revertedWith(OnlyOwnerAllowed);
+            ).to.be.revertedWith(ONLY_OWNER);
         });
 
         it("Should revert transaction when emergencyTokenTransfer is not used by owner", async function () {
             await expect(faucet.connect(faucetTarget).emergencyTokenTransfer(amWMATIC, faucetTarget.address, 0)
-            ).to.be.revertedWith(OnlyOwnerAllowed);
+            ).to.be.revertedWith(ONLY_OWNER);
         });
 
         it("Should retrieve stuck ether in contract", async function () {
@@ -166,9 +173,7 @@ describe("Faucet contract", function () {
             const sendingValue = ethers.utils.parseEther("0.0002");
 
             await SendEthTo(owner, faucet.address, sendingValue);
-
-            await (await faucet.emergencyTokenTransfer(amWMATIC, owner.address, sendingValue)).wait();
-
+            await (await faucet.emergencyTokenTransfer(amWMATIC, owner.address, sendingValue, { gasLimit: 300000 })).wait(); // override gas limit was faliing out of gas
             expect((await ERC20_Balance(amWMATIC, owner.address)).eq(sendingValue));
         });
     });
@@ -182,7 +187,7 @@ describe("Faucet contract", function () {
             await SendEthTo(owner, faucet.address, funds);
 
             await expect(faucet.doFaucetDrop(funds)
-            ).to.be.revertedWith(ExceedingDailyLimit);
+            ).to.be.revertedWith(EXCEEDING_DAILY_LIMIT);
         });
 
         it("Should revert doFaucetDrop because we exceed funds", async function () {
@@ -193,13 +198,13 @@ describe("Faucet contract", function () {
             await SendEthTo(owner, faucet.address, quarterDailyLimit);
             // doFaucetDrop with more that we have, but within daily limit
             await expect(faucet.doFaucetDrop(halfDailyLimit)
-            ).to.be.revertedWith(NotEnoughFunds);
+            ).to.be.revertedWith(NOT_ENOUGH_FUNDS);
         });
 
 
         it("Should revert doFaucetDrop with amount == 0", async function () {
             await expect(faucet.doFaucetDrop(0) // ZERO AMOUNT TO DROP - potential div by zero
-            ).to.be.revertedWith(AmountCannotBeZero);
+            ).to.be.revertedWith(AMOUNT_CANNOT_BE_ZERO);
         });
 
         it("Should do faucet drop.", async function () {
@@ -226,12 +231,10 @@ describe("Faucet contract", function () {
 
             await (await faucet.doFaucetDrop(quarterDailyLimit, { gasLimit: 800000 })).wait(); // Failing to estimate gas override
             await expect(faucet.doFaucetDrop(quarterDailyLimit)
-            ).to.be.revertedWith(OnCooldown);
+            ).to.be.revertedWith(ON_COOLDOWN);
         });
 
         it("Should do two faucet drops.", async function () {
-            const sleep = ms => new Promise(res => setTimeout(res, ms));
-
             await SendEthTo(owner, faucet.address, dailyLimit); // Get more than enough funds for this operation.
 
             // Calculate amount that it triggers for x seconds
@@ -244,7 +247,7 @@ describe("Faucet contract", function () {
 
             faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
             await (await faucet.doFaucetDrop(amount, { gasLimit: 800000 })).wait();  // Failing to estimate gas override
-            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
+            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(ON_COOLDOWN); // next drop right after should be on cooldown.
             faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
 
             expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(amount)));
@@ -253,42 +256,49 @@ describe("Faucet contract", function () {
 
             faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
             await (await faucet.doFaucetDrop(amount, { gasLimit: 800000 })).wait(); // Failing to estimate gas override
-            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
+            await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(ON_COOLDOWN); // next drop right after should be on cooldown.
             faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
 
             expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(amount)));
         });
     });
 
-    describe("Incentives", function () {
+    describe("Testing incentives only on live net.", function () {
         this.timeout(1000000);
 
-        // Try test on  tesnt net ...
+        if (testingOnLiveNet) {
 
-        // it("TODO Incentives", async function () {
-        //     const sleep = ms => new Promise(res => setTimeout(res, ms));
-        //     const seconds = 15; // keep this big enough 
+            it("Getting incentives", async function () {
+                const seconds = 10;
 
-        //     //  const oneEth = ethers.utils.parseEther("0.01");
+                await SendEthTo(owner, faucet.address, dailyLimit);
+                await sleep(seconds * 1000);
 
-        //     await SendEthTo(owner, faucet.address, dailyLimit); // Get more than enough funds for this operation.
+                const rewardsBeforeClaim = await faucet.rewardsAmount();
 
-        //     console.log("Faucet Funds ", await faucet.faucetFunds());
-        //     console.log("Immediate rewards check ", (await faucet.rewardsAmount()).toString());
+                expect(rewardsBeforeClaim.gt(0));
+            });
 
-        //     await sleep(seconds * 1000);
+            it("claim incentives", async function () {
+                //const sleep = ms => new Promise(res => setTimeout(res, ms));
+                const seconds = 30;
 
-        //     console.log("Rewards after x seconds ", (await faucet.rewardsAmount()).toString());
+                await SendEthTo(owner, faucet.address, dailyLimit);
+                await sleep(seconds * 1000);
 
-        //     await sleep(seconds * 1000);
+                const rewardsBeforeClaim = await faucet.rewardsAmount();
+                const fundsBeforeClaim = await faucet.faucetFunds();
 
-        //     console.log("Rewards after x seconds ", (await faucet.rewardsAmount()).toString());
+                await (await faucet.claimRewards()).wait();
 
-        //     //await (await faucet.claimRewards()).wait();
+                const rewardsAfterClaming = await faucet.rewardsAmount();
 
-        //     // console.log("After 15s rewards check ", await faucet.claimRewards());
-        // });
+                const fundsAfterClaim = await faucet.faucetFunds();
 
+                expect(rewardsBeforeClaim.gte(rewardsAfterClaming));
+                expect(fundsAfterClaim.gte(fundsBeforeClaim.add(rewardsBeforeClaim)));
+            });
+        }
     });
 
 });
