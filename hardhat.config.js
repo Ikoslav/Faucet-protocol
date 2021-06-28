@@ -31,8 +31,8 @@ module.exports = {
 
     matic: {
       url: process.env.MATIC_PROVIDER,
-      /// accounts: [process.env.MUMBAI_ACC_OWNER, process.env.MUMBAI_ACC_FAUCETTARGET],
-      // gasPrice: 7000000000
+      accounts: [process.env.MATIC_ACC_DEPLOYER],
+      gasPrice: 3000000000
     },
 
     mumbai: {

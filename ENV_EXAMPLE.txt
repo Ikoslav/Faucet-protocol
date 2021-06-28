@@ -1,0 +1,29 @@
+# ------------ ----------- ------------
+# ------------ DEVELOPMENT ------------
+# ------------ ----------- ------------
+
+# RPC CALLS PROVIDERS
+MUMBAI_PROVIDER=
+
+# This account is used for deployig testing contracts
+MUMBAI_ACC_OWNER=
+# This account is used as faucet target
+MUMBAI_ACC_FAUCETTARGET=
+
+
+# ------------ ---------- ------------
+# ------------ DEPLOYMENT ------------
+# ------------ ---------- ------------
+
+# RPC CALLS PROVIDERS
+MATIC_PROVIDER=
+
+# this account is used to deploy contracts
+MATIC_ACC_DEPLOYER=
+
+# after contract is deployed wner and faucet target is set
+MATIC_OWNER_ADDRESS=
+MATIC_FAUCET_TARGET_ADDRESS=
+
+# api key for contract verification
+POLYGONSCAN_API_KEY=
