@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const hre = require("hardhat");
 
 // https://hardhat.org/tutorial/testing-contracts.html
 
@@ -15,20 +16,28 @@ describe("Faucet contract", function () {
     let AmountCannotBeZero = "Amount cannot be zero.";
     let DailyLimitCannotBeZero = "Daily limit cannot be 0.";
 
+    let LendingPool;
+    let IncentivesController;
+    let amWMATIC;
+    let WMATIC;
 
-    // AAVE Parts MUMBAI TESNET
-    console.log("TEST FOR MUMBAI TESNET");
-    let LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
-    let IncentivesController = "0xd41aE58e803Edf4304334acCE4DC4Ec34a63C644";
-    let amWMATIC = "0xF45444171435d0aCB08a8af493837eF18e86EE27";
-    let WMATIC = "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889";
-
-    // AAVE Parts MATIC MAINNET
-    // console.log("TEST FOR MATIC MAINNET");
-    // let LendingPool = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
-    // let IncentivesController = "0x357D51124f59836DeD84c8a1730D72B749d8BC23";
-    // let amWMATIC = "0x8dF3aad3a84da6b69A4DA8aeC3eA40d9091B2Ac4";
-    // let WMATIC = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
+    if (hre.network.name == "hardhat") {
+        // ADDRESSES FROM MATIC MAINNET - BECAUSE WE USE FORKING
+        LendingPool = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
+        IncentivesController = "0x357D51124f59836DeD84c8a1730D72B749d8BC23";
+        amWMATIC = "0x8dF3aad3a84da6b69A4DA8aeC3eA40d9091B2Ac4";
+        WMATIC = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
+    }
+    else if (hre.network.name == "mumbai") {
+        // ADDRESSES FROM MUMBAI TESTNET
+        LendingPool = "0x9198F13B08E299d85E096929fA9781A1E3d5d827";
+        IncentivesController = "0xd41aE58e803Edf4304334acCE4DC4Ec34a63C644";
+        amWMATIC = "0xF45444171435d0aCB08a8af493837eF18e86EE27";
+        WMATIC = "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889";
+    }
+    else {
+        console.log("WRONG NETWORK FOR THIS TEST");
+    }
 
     // https://docs.ethers.io/v4/api-utils.html
     let dailyLimit = ethers.utils.parseEther("0.001");
@@ -195,13 +204,16 @@ describe("Faucet contract", function () {
 
         it("Should do faucet drop.", async function () {
             const twoTimesDailyLimit = dailyLimit.mul(2);
-            const quarterDailyLimit = dailyLimit.div(4);
+            const quarterDailyLimit = dailyLimit.div(4); // dailyLimit 0.001
 
             await SendEthTo(owner, faucet.address, twoTimesDailyLimit); // Get more than enough funds for this operation.
 
             const faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
-            await (await faucet.doFaucetDrop(quarterDailyLimit)).wait();
+            //console.log("faucetTargetBalanceBefore", faucetTargetBalanceBefore.toString());
+            await (await faucet.doFaucetDrop(quarterDailyLimit, { gasLimit: 800000 })).wait(); // 0,00025   +  // Failing to estimate gas override
             const faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
+            //console.log("faucetTargetBalanceAfter", faucetTargetBalanceAfter.toString());
+            //console.log("we did drop of ", quarterDailyLimit.toString());
 
             expect(faucetTargetBalanceAfter.eq(faucetTargetBalanceBefore.add(quarterDailyLimit)));
         });
@@ -212,7 +224,7 @@ describe("Faucet contract", function () {
 
             await SendEthTo(owner, faucet.address, twoTimesDailyLimit); // Get more than enough funds for this operation.
 
-            await (await faucet.doFaucetDrop(quarterDailyLimit)).wait();
+            await (await faucet.doFaucetDrop(quarterDailyLimit, { gasLimit: 800000 })).wait(); // Failing to estimate gas override
             await expect(faucet.doFaucetDrop(quarterDailyLimit)
             ).to.be.revertedWith(OnCooldown);
         });
@@ -231,7 +243,7 @@ describe("Faucet contract", function () {
             var faucetTargetBalanceAfter;
 
             faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
-            await (await faucet.doFaucetDrop(amount)).wait();
+            await (await faucet.doFaucetDrop(amount, { gasLimit: 800000 })).wait();  // Failing to estimate gas override
             await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
             faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
 
@@ -240,7 +252,7 @@ describe("Faucet contract", function () {
             await sleep(seconds * 1000);
 
             faucetTargetBalanceBefore = await AddressBalance(faucetTarget.address);
-            await (await faucet.doFaucetDrop(amount)).wait();
+            await (await faucet.doFaucetDrop(amount, { gasLimit: 800000 })).wait(); // Failing to estimate gas override
             await expect(faucet.doFaucetDrop(amount)).to.be.revertedWith(OnCooldown); // next drop right after should be on cooldown.
             faucetTargetBalanceAfter = await AddressBalance(faucetTarget.address);
 
@@ -262,11 +274,15 @@ describe("Faucet contract", function () {
         //     await SendEthTo(owner, faucet.address, dailyLimit); // Get more than enough funds for this operation.
 
         //     console.log("Faucet Funds ", await faucet.faucetFunds());
-        //     console.log("Immediate rewards check ", await faucet.rewardsAmount());
+        //     console.log("Immediate rewards check ", (await faucet.rewardsAmount()).toString());
 
         //     await sleep(seconds * 1000);
 
-        //     console.log("Rewards after x seconds ", await faucet.rewardsAmount());
+        //     console.log("Rewards after x seconds ", (await faucet.rewardsAmount()).toString());
+
+        //     await sleep(seconds * 1000);
+
+        //     console.log("Rewards after x seconds ", (await faucet.rewardsAmount()).toString());
 
         //     //await (await faucet.claimRewards()).wait();
 
