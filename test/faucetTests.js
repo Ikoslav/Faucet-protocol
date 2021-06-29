@@ -159,13 +159,10 @@ describe("Faucet contract", function () {
             const sendingValue = ethers.utils.parseEther("0.0001");
 
             SelfdestructTransfer = await ethers.getContractFactory("SelfdestructTransfer");
-            selfdestructTransfer = await SelfdestructTransfer.deploy({ value: sendingValue });
+            selfdestructTransfer = await SelfdestructTransfer.deploy();
 
             expect((await AddressBalance(faucet.address)).eq(ethers.BigNumber.from(0)));
-            expect((await AddressBalance(selfdestructTransfer.address)).eq(sendingValue));
-
-            await (await selfdestructTransfer.destroyAndTransfer(faucet.address)).wait();
-
+            await (await selfdestructTransfer.destroyAndTransfer(faucet.address, { value: sendingValue })).wait();
             // now we got stuck eth on faucet contract
             expect((await AddressBalance(faucet.address)).eq(sendingValue));
 

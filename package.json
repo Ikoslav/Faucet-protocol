@@ -4,7 +4,8 @@
   "description": "Say no more to transaction fees.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol"
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,8 @@
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.3.1",
-    "hardhat": "^2.4.1"
+    "hardhat": "^2.4.1",
+    "solhint": "^3.3.6"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0"
