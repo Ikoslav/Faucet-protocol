@@ -10,7 +10,8 @@ import {ILendingPool} from "./interfaces/ILendingPool.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
 contract Faucet {
-    address public owner;
+    address public faucetOwner;
+    address public faucetHandler;
     address public faucetTarget;
 
     uint256 public dailyLimit;
@@ -34,18 +35,20 @@ contract Faucet {
     string public constant NOT_ENOUGH_FUNDS = "6"; // 'Not enough funds.'
     string public constant AMOUNT_CANNOT_BE_ZERO = "7"; // 'Amount cannot be zero.'
     string public constant DAILY_LIMIT_CANNOT_BE_ZERO = "8"; // 'Daily limit cannot be 0.'
+    string public constant ONLY_FAUCET_HANDLER = "9"; // 'Only faucet handler can call this function.'
 
     constructor(
-        address owner_,
-        uint256 dailyLimit_,
+        address faucetOwner_,
+        address faucetHandler_,
         address faucetTarget_,
+        uint256 dailyLimit_,
         address aaveLendingPool,
         address aaveIncentivesController,
         address aWETH_,
         address WETH_
     ) {
-        owner = owner_;
-
+        faucetOwner = faucetOwner_;
+        faucetHandler = faucetHandler_;
         faucetTarget = faucetTarget_;
 
         dailyLimit = (dailyLimit_ == 0) ? 1 : dailyLimit_; // Ensure non zero daily limit
@@ -65,7 +68,7 @@ contract Faucet {
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, ONLY_OWNER);
+        require(msg.sender == faucetOwner, ONLY_OWNER);
         _;
     }
 
@@ -77,6 +80,7 @@ contract Faucet {
     }
 
     function doFaucetDrop(uint256 amount) external {
+        require(msg.sender == faucetHandler, ONLY_FAUCET_HANDLER);
         require(
             (block.timestamp - cooldownDuration) >= cooldownStartTimestamp,
             ON_COOLDOWN
@@ -107,8 +111,7 @@ contract Faucet {
         uint256 amountOfWETH = WETH.balanceOf(address(this));
 
         if (amountOfWETH > 0) {
-            // deposition 0 would throw error.
-            POOL.deposit(address(WETH), amountOfWETH, address(this), 0);
+            POOL.deposit(address(WETH), amountOfWETH, address(this), 0); // 0 Deposit would throw error.
         }
     }
 
@@ -116,7 +119,7 @@ contract Faucet {
         return INCENTIVES.getRewardsBalance(assetsOfInterest, address(this));
     }
 
-    function emergencyTokenTransfer(
+    function tokenTransfer(
         address token,
         address to,
         uint256 amount
@@ -141,8 +144,12 @@ contract Faucet {
         dailyLimit = newDailyLimit;
     }
 
-    function setOwner(address newOwner) external onlyOwner {
-        owner = newOwner;
+    function setFaucetHandler(address newFaucetHandler) external onlyOwner {
+        faucetHandler = newFaucetHandler;
+    }
+
+    function setFaucetOwner(address newFaucetOwner) external onlyOwner {
+        faucetOwner = newFaucetOwner;
     }
 
     function setFaucetTarget(address newFaucetTarget) external onlyOwner {

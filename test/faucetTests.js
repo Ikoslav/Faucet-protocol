@@ -17,6 +17,7 @@ describe("Faucet contract", function () {
     let NOT_ENOUGH_FUNDS = "6";
     let AMOUNT_CANNOT_BE_ZERO = "7";
     let DAILY_LIMIT_CANNOT_BE_ZERO = "8";
+    let ONLY_FAUCET_HANDLER = "9";
 
     let LendingPool;
     let IncentivesController;
@@ -67,9 +68,10 @@ describe("Faucet contract", function () {
         this.timeout(1000000);
 
         faucet = await Faucet.deploy(
-            owner.address,
+            owner.address, // faucetOwner
+            owner.address, // owner will be also faucetHandler
+            faucetTarget.address, // faucetTarget
             dailyLimit,
-            faucetTarget.address,
             LendingPool,
             IncentivesController,
             amWMATIC,
@@ -80,7 +82,8 @@ describe("Faucet contract", function () {
         this.timeout(1000000);
 
         it("Should set the right deplyment variables", async function () {
-            expect(await faucet.owner()).to.equal(owner.address);
+            expect(await faucet.faucetOwner()).to.equal(owner.address);
+            expect(await faucet.faucetHandler()).to.equal(owner.address);
             expect(await faucet.faucetTarget()).to.equal(faucetTarget.address);
             expect(await faucet.dailyLimit()).to.equal(dailyLimit); // if daily limit is 0 contract will be crated with value 1
             expect(await faucet.cooldownStartTimestamp()).to.equal(ethers.BigNumber.from(0));
@@ -107,7 +110,7 @@ describe("Faucet contract", function () {
         });
 
         it("Should revert transaction when setOwner is not used by owner", async function () {
-            await expect(faucet.connect(faucetTarget).setOwner(faucetTarget.address)
+            await expect(faucet.connect(faucetTarget).setFaucetOwner(faucetTarget.address)
             ).to.be.revertedWith(ONLY_OWNER);
         });
 
@@ -117,13 +120,18 @@ describe("Faucet contract", function () {
         });
 
         it("Should set faucet owner", async function () {
-            await (await faucet.setOwner(faucetTarget.address)).wait();
-            expect(await faucet.owner()).to.equal(faucetTarget.address);
+            await (await faucet.setFaucetOwner(faucetTarget.address)).wait();
+            expect(await faucet.faucetOwner()).to.equal(faucetTarget.address);
         });
 
         it("Should set faucet target", async function () {
             await (await faucet.setFaucetTarget(owner.address)).wait();
             expect(await faucet.faucetTarget()).to.equal(owner.address);
+        });
+
+        it("Should set faucet handler", async function () {
+            await (await faucet.setFaucetHandler(faucetTarget.address)).wait();
+            expect(await faucet.faucetHandler()).to.equal(faucetTarget.address);
         });
 
         it("Should convert directly send eth to aTokens (faucet funds)", async function () {
@@ -143,8 +151,8 @@ describe("Faucet contract", function () {
             ).to.be.revertedWith(ONLY_OWNER);
         });
 
-        it("Should revert transaction when emergencyTokenTransfer is not used by owner", async function () {
-            await expect(faucet.connect(faucetTarget).emergencyTokenTransfer(amWMATIC, faucetTarget.address, 0)
+        it("Should revert transaction when tokenTransfer is not used by owner", async function () {
+            await expect(faucet.connect(faucetTarget).tokenTransfer(amWMATIC, faucetTarget.address, 0)
             ).to.be.revertedWith(ONLY_OWNER);
         });
 
@@ -174,13 +182,18 @@ describe("Faucet contract", function () {
             const sendingValue = ethers.utils.parseEther("0.0002");
 
             await SendEthTo(owner, faucet.address, sendingValue);
-            await (await faucet.emergencyTokenTransfer(amWMATIC, owner.address, sendingValue, { gasLimit: 300000 })).wait(); // override gas limit was faliing out of gas
+            await (await faucet.tokenTransfer(amWMATIC, owner.address, sendingValue, { gasLimit: 300000 })).wait(); // override gas limit was faliing out of gas
             expect((await ERC20_Balance(amWMATIC, owner.address)).eq(sendingValue));
         });
     });
 
     describe("Faucet Drop", function () {
         this.timeout(1000000);
+
+        it("Should revert doFaucetDrop when not callen by faucetHandler", async function () {
+            await expect(faucet.connect(faucetTarget).doFaucetDrop(dailyLimit)
+            ).to.be.revertedWith(ONLY_FAUCET_HANDLER);
+        });
 
         it("Should revert doFaucetDrop because we exceed daily limit", async function () {
             const funds = dailyLimit.add(1); // exceed daily limit
