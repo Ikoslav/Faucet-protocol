@@ -17,11 +17,11 @@ contract Faucet {
     uint256 public dailyLimit;
     uint256 public cooldownEnds;
 
-    ILendingPool public immutable POOL;
-    IAaveIncentivesController public immutable INCENTIVES;
+    ILendingPool public immutable lendingPool;
+    IAaveIncentivesController public immutable incentivesController;
 
     IERC20 public immutable aWETH;
-    IWETH public immutable WETH;
+    IWETH public immutable weth;
 
     address[] private assetsOfInterest;
 
@@ -43,8 +43,8 @@ contract Faucet {
         uint256 dailyLimit_,
         address aaveLendingPool,
         address aaveIncentivesController,
-        address aWETH_,
-        address WETH_
+        address aweth_,
+        address weth_
     ) {
         faucetOwner = faucetOwner_;
         faucetHandler = faucetHandler_;
@@ -53,16 +53,18 @@ contract Faucet {
         dailyLimit = (dailyLimit_ == 0) ? 1 : dailyLimit_; // Ensure non zero daily limit
         cooldownEnds = 0;
 
-        POOL = ILendingPool(aaveLendingPool);
-        INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
+        lendingPool = ILendingPool(aaveLendingPool);
+        incentivesController = IAaveIncentivesController(
+            aaveIncentivesController
+        );
 
-        WETH = IWETH(WETH_);
-        aWETH = IERC20(aWETH_);
+        weth = IWETH(weth_);
+        aWETH = IERC20(aweth_);
 
-        IERC20(WETH_).approve(aaveLendingPool, type(uint256).max); // Needed approval
+        IERC20(weth_).approve(aaveLendingPool, type(uint256).max); // Needed approval
 
         assetsOfInterest = new address[](1); // My only asset of interest is this aToken
-        assetsOfInterest[0] = address(aWETH_);
+        assetsOfInterest[0] = address(aweth_);
     }
 
     modifier onlyOwner {
@@ -71,23 +73,23 @@ contract Faucet {
     }
 
     receive() external payable {
-        if (msg.sender != address(WETH)) {
-            WETH.deposit{value: msg.value}();
-            POOL.deposit(address(WETH), msg.value, address(this), 0);
-        } // else: WETH is sending us back ETH, so don't do anything (to avoid recursion)
+        if (msg.sender != address(weth)) {
+            weth.deposit{value: msg.value}();
+            lendingPool.deposit(address(weth), msg.value, address(this), 0);
+        } // else: weth is sending us back ETH, so don't do anything (to avoid recursion)
     }
 
     function doFaucetDrop(uint256 amount) external {
         require(msg.sender == faucetHandler, ONLY_FAUCET_HANDLER);
-        require(block.timestamp >= cooldownEnds, ON_COOLDOWN);
+        require(cleablock.timestamp >= cooldownEnds, ON_COOLDOWN);
         require(amount > 0, AMOUNT_CANNOT_BE_ZERO);
         require(amount <= dailyLimit, EXCEEDING_DAILY_LIMIT);
         require(amount <= faucetFunds(), NOT_ENOUGH_FUNDS);
 
         cooldownEnds = block.timestamp + (1 days / (dailyLimit / amount));
 
-        POOL.withdraw(address(WETH), amount, address(this));
-        WETH.withdraw(amount);
+        lendingPool.withdraw(address(weth), amount, address(this));
+        weth.withdraw(amount);
 
         safeTransferETH(faucetTarget, amount);
     }
@@ -97,21 +99,25 @@ contract Faucet {
     }
 
     function claimRewards() external {
-        INCENTIVES.claimRewards(
+        incentivesController.claimRewards(
             assetsOfInterest,
             type(uint256).max,
             address(this)
         );
 
-        uint256 amountOfWETH = WETH.balanceOf(address(this));
+        uint256 amountOfWETH = weth.balanceOf(address(this));
 
         if (amountOfWETH > 0) {
-            POOL.deposit(address(WETH), amountOfWETH, address(this), 0); // 0 Deposit would throw error.
+            lendingPool.deposit(address(weth), amountOfWETH, address(this), 0); // 0 Deposit would throw error.
         }
     }
 
     function rewardsAmount() public view returns (uint256) {
-        return INCENTIVES.getRewardsBalance(assetsOfInterest, address(this));
+        return
+            incentivesController.getRewardsBalance(
+                assetsOfInterest,
+                address(this)
+            );
     }
 
     function tokenTransfer(
