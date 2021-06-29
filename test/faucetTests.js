@@ -87,9 +87,10 @@ describe("Faucet contract", function () {
             expect(await faucet.faucetTarget()).to.equal(faucetTarget.address);
             expect(await faucet.dailyLimit()).to.equal(dailyLimit); // if daily limit is 0 contract will be crated with value 1
             expect(await faucet.cooldownEnds()).to.equal(ethers.BigNumber.from(0));
-            expect(await faucet.POOL()).to.equal(LendingPool);
-            expect(await faucet.aWETH()).to.equal(amWMATIC);
-            expect(await faucet.WETH()).to.equal(WMATIC);
+            expect(await faucet.lendingPool()).to.equal(LendingPool);
+            expect(await faucet.incentivesController()).to.equal(IncentivesController);
+            expect(await faucet.aweth()).to.equal(amWMATIC);
+            expect(await faucet.weth()).to.equal(WMATIC);
         });
 
         it("Should revert when setDailyLimit is not used by owner", async function () {

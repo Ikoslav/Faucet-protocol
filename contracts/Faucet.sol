@@ -20,7 +20,7 @@ contract Faucet {
     ILendingPool public immutable lendingPool;
     IAaveIncentivesController public immutable incentivesController;
 
-    IERC20 public immutable aWETH;
+    IERC20 public immutable aweth;
     IWETH public immutable weth;
 
     address[] private assetsOfInterest;
@@ -59,7 +59,7 @@ contract Faucet {
         );
 
         weth = IWETH(weth_);
-        aWETH = IERC20(aweth_);
+        aweth = IERC20(aweth_);
 
         IERC20(weth_).approve(aaveLendingPool, type(uint256).max); // Needed approval
 
@@ -95,7 +95,7 @@ contract Faucet {
     }
 
     function faucetFunds() public view returns (uint256) {
-        return aWETH.balanceOf(address(this));
+        return aweth.balanceOf(address(this));
     }
 
     function claimRewards() external {
