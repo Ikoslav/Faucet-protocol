@@ -15,8 +15,7 @@ contract Faucet {
     address public faucetTarget;
 
     uint256 public dailyLimit;
-    uint256 public cooldownStartTimestamp;
-    uint256 public cooldownDuration;
+    uint256 public cooldownEnds;
 
     ILendingPool public immutable POOL;
     IAaveIncentivesController public immutable INCENTIVES;
@@ -52,8 +51,7 @@ contract Faucet {
         faucetTarget = faucetTarget_;
 
         dailyLimit = (dailyLimit_ == 0) ? 1 : dailyLimit_; // Ensure non zero daily limit
-        cooldownStartTimestamp = 0;
-        cooldownDuration = 0;
+        cooldownEnds = 0;
 
         POOL = ILendingPool(aaveLendingPool);
         INCENTIVES = IAaveIncentivesController(aaveIncentivesController);
@@ -81,19 +79,16 @@ contract Faucet {
 
     function doFaucetDrop(uint256 amount) external {
         require(msg.sender == faucetHandler, ONLY_FAUCET_HANDLER);
-        require(
-            (block.timestamp - cooldownDuration) >= cooldownStartTimestamp,
-            ON_COOLDOWN
-        );
+        require(block.timestamp >= cooldownEnds, ON_COOLDOWN);
         require(amount > 0, AMOUNT_CANNOT_BE_ZERO);
         require(amount <= dailyLimit, EXCEEDING_DAILY_LIMIT);
         require(amount <= faucetFunds(), NOT_ENOUGH_FUNDS);
 
-        cooldownStartTimestamp = block.timestamp;
-        cooldownDuration = 1 days / (dailyLimit / amount);
+        cooldownEnds = block.timestamp + (1 days / (dailyLimit / amount));
 
         POOL.withdraw(address(WETH), amount, address(this));
         WETH.withdraw(amount);
+
         safeTransferETH(faucetTarget, amount);
     }
 
