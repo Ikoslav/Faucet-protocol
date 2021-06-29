@@ -81,7 +81,7 @@ contract Faucet {
 
     function doFaucetDrop(uint256 amount) external {
         require(msg.sender == faucetHandler, ONLY_FAUCET_HANDLER);
-        require(cleablock.timestamp >= cooldownEnds, ON_COOLDOWN);
+        require(block.timestamp >= cooldownEnds, ON_COOLDOWN);
         require(amount > 0, AMOUNT_CANNOT_BE_ZERO);
         require(amount <= dailyLimit, EXCEEDING_DAILY_LIMIT);
         require(amount <= faucetFunds(), NOT_ENOUGH_FUNDS);
