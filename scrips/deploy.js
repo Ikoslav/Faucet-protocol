@@ -31,8 +31,8 @@ async function main() {
         await faucet.deployed();
         console.log("Faucet deployed to address:", faucet.address);
 
-        const seconds = 15;
-        console.log("We will wait for a bit.");
+        const seconds = 60;
+        console.log("We will wait for seconds:", seconds);
         await sleep(seconds * 1000);
 
         console.log("Let's verify...");
