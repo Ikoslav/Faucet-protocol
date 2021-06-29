@@ -22,17 +22,6 @@ contract Faucet {
 
     address[] private assetsOfInterest;
 
-    // ERROS
-    string public constant ONLY_OWNER = "1"; // 'Only owner can call this function.'
-    string public constant NO_FALLBACK = "2"; // 'Fallback not allowed.'
-    string public constant VALUE_TRANSFER_FAILED = "3"; // 'Value transfer failed.'
-    string public constant ON_COOLDOWN = "4"; // 'On cooldown.'
-    string public constant EXCEEDING_DAILY_LIMIT = "5"; // 'Exceeing daily limit.'
-    string public constant NOT_ENOUGH_FUNDS = "6"; // 'Not enough funds.'
-    string public constant AMOUNT_CANNOT_BE_ZERO = "7"; // 'Amount cannot be zero.'
-    string public constant DAILY_LIMIT_CANNOT_BE_ZERO = "8"; // 'Daily limit cannot be 0.'
-    string public constant ONLY_FAUCET_HANDLER = "9"; // 'Only faucet handler can call this function.'
-
     constructor(
         address faucetOwner_,
         address faucetHandler_,
@@ -65,7 +54,7 @@ contract Faucet {
     }
 
     modifier onlyOwner {
-        require(msg.sender == faucetOwner, ONLY_OWNER);
+        require(msg.sender == faucetOwner, "Only owner");
         _;
     }
 
@@ -77,11 +66,11 @@ contract Faucet {
     }
 
     function doFaucetDrop(uint256 amount) external {
-        require(msg.sender == faucetHandler, ONLY_FAUCET_HANDLER);
-        require(block.timestamp >= cooldownEnds, ON_COOLDOWN);
-        require(amount > 0, AMOUNT_CANNOT_BE_ZERO);
-        require(amount <= dailyLimit, EXCEEDING_DAILY_LIMIT);
-        require(amount <= faucetFunds(), NOT_ENOUGH_FUNDS);
+        require(msg.sender == faucetHandler, "Only faucet handler");
+        require(block.timestamp >= cooldownEnds, "On cooldown");
+        require(amount > 0, "Amount cannot be 0");
+        require(amount <= dailyLimit, "Exceeding daily limit");
+        require(amount <= faucetFunds(), "Not enough funds");
 
         cooldownEnds = block.timestamp + (1 days / (dailyLimit / amount));
 
@@ -134,11 +123,11 @@ contract Faucet {
 
     function safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, VALUE_TRANSFER_FAILED);
+        require(success, "Value transfer failed");
     }
 
     function setDailyLimit(uint256 newDailyLimit) external onlyOwner {
-        require(newDailyLimit > 0, DAILY_LIMIT_CANNOT_BE_ZERO);
+        require(newDailyLimit > 0, "Daily limit cannot be 0");
         dailyLimit = newDailyLimit;
     }
 
@@ -155,6 +144,6 @@ contract Faucet {
     }
 
     fallback() external payable {
-        revert(NO_FALLBACK);
+        revert("No fallback allowed");
     }
 }

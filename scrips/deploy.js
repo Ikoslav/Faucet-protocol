@@ -13,7 +13,7 @@ async function main() {
     let dailyLimit = ethers.utils.parseEther("0.01");
 
     if (hre.network.name != "matic") {
-        console.log("WRONG NETWORK!");
+        console.log("WRONG NETWORK! This script is prepared only for matic mainnet deployment.");
     }
     else {
         const Faucet = await hre.ethers.getContractFactory("Faucet");
