@@ -4,7 +4,6 @@
   "description": "Say no more to transaction fees.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol"
   },
   "repository": {
