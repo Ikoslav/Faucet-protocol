@@ -1,5 +1,3 @@
-# TODO UPDATE THIS
-
 # ------------ ----------- ------------
 # ------------ DEVELOPMENT ------------
 # ------------ ----------- ------------
@@ -25,6 +23,9 @@ MATIC_ACC_DEPLOYER=
 
 # after contract is deployed wner and faucet target is set
 MATIC_OWNER_ADDRESS=
+# handler
+MATIC_FAUCET_HANDLER_ADDRESS=
+# target
 MATIC_FAUCET_TARGET_ADDRESS=
 
 # api key for contract verification

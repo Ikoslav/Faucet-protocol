@@ -1,5 +1,5 @@
 # Faucet-protocol
 
-For polygon network.
+Faucet for polygon network.
 
-TODO: .env example
+TODO README.
